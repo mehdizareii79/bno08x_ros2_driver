@@ -100,8 +100,12 @@ void BNO08xROS::init_comms() {
         RCLCPP_INFO(this->get_logger(), "Communication Interface: SPI");
         std::string device;
         this->get_parameter("spi.device", device);
+        int INT,WAK,RST;
+        this->get_parameter("spi.INT", INT);
+        this->get_parameter("spi.WAK", WAK);
+        this->get_parameter("spi.RST", RST);
         try {
-            comm_interface_ = new SPIInterface(device);
+            comm_interface_ = new SPIInterface(device, INT, WAK, RST);
         } catch (const std::exception& e) {
             RCLCPP_ERROR(this->get_logger(), 
                     "SPI Interface not implemented: %s", e.what());
@@ -134,6 +138,10 @@ void BNO08xROS::init_parameters() {
     this->declare_parameter<std::string>("uart.device", "/dev/ttyACM0");
     this->declare_parameter<bool>("spi.enabled", false);
     this->declare_parameter<std::string>("spi.device", "/dev/spidev0.0");
+    this->declare_parameter<int>("spi.INT", 0);
+    this->declare_parameter<int>("spi.WAK", 0);
+    this->declare_parameter<int>("spi.RST", 0);
+
 
     this->get_parameter("frame_id", frame_id_);
 

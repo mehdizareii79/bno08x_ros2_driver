@@ -9,7 +9,7 @@ bno08x_driver:
     # This requires a hardware change to the board
     # (see documentation for more information)
     i2c:
-      enabled: true
+      enabled: false
       bus: "/dev/i2c-7"
       address: "0x4A"
 
@@ -21,3 +21,12 @@ bno08x_driver:
         enabled: true
         rate: 100   # max 400 Hz 
                     # (anythihng above 100Hz depends on your hardware)
+
+
+    spi:
+      enabled: true
+      device: "/dev/spidev4.1" # name of device which spiinterface gets in
+      INT: 1 # int number of INT GPIO
+      WAK: 2 # int number of WAK GPIO
+      RST: 3 # int number of RST GPIO
+
