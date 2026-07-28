@@ -193,21 +193,41 @@ private:
 
     // Polls the INT pin file descriptor without wasting CPU cycles in busy-wait
     bool wait_for_int(int timeout_ms) {
-        struct pollfd pfd;
-        pfd.fd = int_fd_;
-        pfd.events = POLLPRI; // Sysfs GPIO interrupts register as POLLPRI
-
+        // struct pollfd pfd;
+        // pfd.fd = int_fd_;
+        // pfd.events = POLLPRI; // Sysfs GPIO interrupts register as POLLPRI
+        //
+        // char c;
+        // ::pread(int_fd_, &c, 1, 0); // Read to clear any stale interrupt flag
+        // if (c == '0') return true;
+        //
+        // if (::poll(&pfd, 1, timeout_ms) > 0) {
+        //     if (pfd.revents & POLLPRI) {
+        //         ::pread(int_fd_, &c, 1, 0); // Consume event
+        //         return true;
+        //     }
+        // }
+        // return false;
+        auto start = std::chrono::steady_clock::now();
         char c;
-        ::pread(int_fd_, &c, 1, 0); // Read to clear any stale interrupt flag
-        if (c == '0') return true;
 
-        if (::poll(&pfd, 1, timeout_ms) > 0) {
-            if (pfd.revents & POLLPRI) {
-                ::pread(int_fd_, &c, 1, 0); // Consume event
-                return true;
+        while (true) {
+            // Read the exact physical state of the pin right now
+            ::pread(int_fd_, &c, 1, 0);
+
+            if (c == '0') {
+                return true; // Sensor pulled INT low, it's ready!
             }
+
+            // Check for timeout
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() >= timeout_ms) {
+                return false; // Timed out
+            }
+
+            // Yield CPU for 100 microseconds to prevent 100% core lockup
+            usleep(100);
         }
-        return false;
     }
 
     // Core spidev full-duplex driver wrapper
