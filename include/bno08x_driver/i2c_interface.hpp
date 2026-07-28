@@ -72,56 +72,75 @@ public:
 
     int read(uint8_t *pBuffer, unsigned len, uint32_t *t_us) override {
         //DEBUG_LOG("BNO08x - I2C Comm Read");
-        uint8_t header[4];
-        if (::read(i2c_fd_, header, 4) != 4) {
+        // uint8_t header[4];
+        // if (::read(i2c_fd_, header, 4) != 4) {
+        //     return 0;
+        // }
+        //
+        // uint16_t packet_size = (uint16_t)header[0] | (uint16_t)header[1] << 8;
+        // packet_size &= ~0x8000;
+        //
+        // DEBUG_LOG("BNO08x - Packet size: " << packet_size);
+        // DEBUG_LOG_BUFFER(header, 4);
+        //
+        // if (packet_size > len) {
+        //     return 0;
+        // }
+        //
+        // uint16_t cargo_remaining = packet_size;
+        // uint8_t i2c_buffer[32];
+        // uint16_t read_size;
+        // uint16_t cargo_read_amount = 0;
+        // bool first_read = true;
+        //
+        // while (cargo_remaining > 0) {
+        //     read_size = std::min((size_t)32, (size_t)cargo_remaining + (first_read ? 0 : 4));
+        //     if (::read(i2c_fd_, i2c_buffer, read_size) != read_size) {
+        //         return 0;
+        //     }
+        //
+        //     if (first_read) {
+        //         cargo_read_amount = read_size;
+        //         memcpy(pBuffer, i2c_buffer, cargo_read_amount);
+        //         first_read = false;
+        //     } else {
+        //         cargo_read_amount = read_size - 4;
+        //         memcpy(pBuffer, i2c_buffer + 4, cargo_read_amount);
+        //     }
+        //
+        //     pBuffer += cargo_read_amount;
+        //     cargo_remaining -= cargo_read_amount;
+        // }
+        //
+        // *t_us = getTimeUs();
+        // return packet_size;
+
+        int bytes_read = ::read(i2c_fd_, pBuffer, len);
+
+        if (bytes_read < 0) {
             return 0;
         }
 
-        uint16_t packet_size = (uint16_t)header[0] | (uint16_t)header[1] << 8;
-        packet_size &= ~0x8000;
-
-        DEBUG_LOG("BNO08x - Packet size: " << packet_size);
-        DEBUG_LOG_BUFFER(header, 4);
-
-        if (packet_size > len) {
-            return 0;
+        // Prevent nullptr dereference crash if t_us is null
+        if (t_us) {
+            *t_us = getTimeUs();
         }
 
-        uint16_t cargo_remaining = packet_size;
-        uint8_t i2c_buffer[32];
-        uint16_t read_size;
-        uint16_t cargo_read_amount = 0;
-        bool first_read = true;
-
-        while (cargo_remaining > 0) {
-            read_size = std::min((size_t)32, (size_t)cargo_remaining + (first_read ? 0 : 4));
-            if (::read(i2c_fd_, i2c_buffer, read_size) != read_size) {
-                return 0;
-            }
-
-            if (first_read) {
-                cargo_read_amount = read_size;
-                memcpy(pBuffer, i2c_buffer, cargo_read_amount);
-                first_read = false;
-            } else {
-                cargo_read_amount = read_size - 4;
-                memcpy(pBuffer, i2c_buffer + 4, cargo_read_amount);
-            }
-
-            pBuffer += cargo_read_amount;
-            cargo_remaining -= cargo_read_amount;
-        }
-
-        *t_us = getTimeUs();
-        return packet_size;
+        return len; // shtp.c will parse the 4-byte header and discard the excess
     }
 
     int write(uint8_t *pBuffer, unsigned len) override {
-        size_t write_size = std::min((size_t)32, (size_t)len);
-        if (::write(i2c_fd_, pBuffer, write_size) != write_size) {
+        // size_t write_size = std::min((size_t)32, (size_t)len);
+        // if (::write(i2c_fd_, pBuffer, write_size) != write_size) {
+        //     return 0;
+        // }
+        // return write_size;
+        int bytes_written = ::write(i2c_fd_, pBuffer, len);
+
+        if (bytes_written != static_cast<int>(len)) {
             return 0;
         }
-        return write_size;
+        return len;
     }
 
 private:
