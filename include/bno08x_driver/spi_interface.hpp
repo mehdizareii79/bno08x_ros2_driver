@@ -85,18 +85,52 @@ public:
     }
 
     int read(uint8_t *pBuffer, unsigned len, uint32_t *t_us) override {
-        if (!wait_for_int(100)) {
+        // if (!wait_for_int(100)) {
+        //     return 0;
+        // }
+        //
+        // // The SH-2 library passes in 'len' (384 bytes).
+        // // Read the whole block in one continuous transfer to keep CS LOW.
+        // if (!spi_transfer(nullptr, pBuffer, len)) {
+        //     return 0;
+        // }
+        //
+        // if (t_us) *t_us = getTimeUs();
+        // return len; // Return full length; the SH-2 library parses the header itself
+        // 1. Non-blocking check for INT pin going LOW (Data Available)
+        if (!wait_for_int(100)) { // 100ms timeout
             return 0;
         }
 
-        // The SH-2 library passes in 'len' (384 bytes).
-        // Read the whole block in one continuous transfer to keep CS LOW.
-        if (!spi_transfer(nullptr, pBuffer, len)) {
+        // 2. Read 4-byte SHTP header to obtain packet size
+        uint8_t header[4] = {0};
+        if (!spi_transfer(nullptr, header, 4)) {
             return 0;
+        }
+
+        // Reconstruct 16-bit packet size from Little-Endian bytes
+        uint16_t packet_size = (uint16_t)header[0] | ((uint16_t)header[1] << 8);
+        packet_size &= ~0x8000; // Mask out SHTP continuation bit
+
+        DEBUG_LOG("BNO08x - SPI Packet size: " << packet_size);
+        DEBUG_LOG_BUFFER(header, 4);
+
+        if (packet_size > len || packet_size == 0) {
+            return 0; // Buffer overflow safety check
+        }
+
+        // 3. Copy already-received header into caller's buffer
+        memcpy(pBuffer, header, 4);
+
+        // 4. Read remaining cargo in a single SPI transfer
+        if (packet_size > 4) {
+            if (!spi_transfer(nullptr, pBuffer + 4, packet_size - 4)) {
+                return 0;
+            }
         }
 
         if (t_us) *t_us = getTimeUs();
-        return len; // Return full length; the SH-2 library parses the header itself
+        return packet_size;
     }
 
     int write(uint8_t *pBuffer, unsigned len) override {
