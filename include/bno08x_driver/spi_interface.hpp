@@ -194,23 +194,40 @@ private:
         // }
         // return true;
         SysGPIO gpio(pin);
+        int ret;
 
         // 1. Export the GPIO
-        if (gpio.gpio_export() < 0) {
+        ret = gpio.gpio_export();
+        if (ret < 0) {
+            std::cerr << "[setup_gpio] ERROR: Failed to export pin " << pin
+                      << ". Return code: " << ret
+                      << ", errno: " << errno << " (" << strerror(errno) << ")" << std::endl;
             return false;
         }
 
-        usleep(10000); // Short pause for sysfs node creation
+        // Wait for udev/sysfs to actually create the node files.
+        // Note: Increased from 10ms to 50ms. Sometimes sysfs is slow on embedded systems.
+        usleep(50000);
 
         // 2. Set direction
         bool is_out = (dir == "out");
-        if (gpio.gpio_set_dir(is_out) < 0) {
+        ret = gpio.gpio_set_dir(is_out);
+        if (ret < 0) {
+            std::cerr << "[setup_gpio] ERROR: Failed to set direction '" << dir
+                      << "' for pin " << pin
+                      << ". Return code: " << ret
+                      << ", errno: " << errno << " (" << strerror(errno) << ")" << std::endl;
             return false;
         }
 
         // 3. Set edge if provided
         if (!edge.empty()) {
-            if (gpio.gpio_set_edge(edge.c_str()) < 0) {
+            ret = gpio.gpio_set_edge(edge.c_str());
+            if (ret < 0) {
+                std::cerr << "[setup_gpio] ERROR: Failed to set edge '" << edge
+                          << "' for pin " << pin
+                          << ". Return code: " << ret
+                          << ", errno: " << errno << " (" << strerror(errno) << ")" << std::endl;
                 return false;
             }
         }
