@@ -85,40 +85,18 @@ public:
     }
 
     int read(uint8_t *pBuffer, unsigned len, uint32_t *t_us) override {
-        // 1. Non-blocking check for INT pin going LOW (Data Available)
-        if (!wait_for_int(100)) { // 100ms timeout
+        if (!wait_for_int(100)) {
             return 0;
         }
 
-        // 2. Read 4-byte SHTP header to obtain packet size
-        uint8_t header[4] = {0};
-        if (!spi_transfer(nullptr, header, 4)) {
+        // The SH-2 library passes in 'len' (384 bytes).
+        // Read the whole block in one continuous transfer to keep CS LOW.
+        if (!spi_transfer(nullptr, pBuffer, len)) {
             return 0;
-        }
-
-        // Reconstruct 16-bit packet size from Little-Endian bytes
-        uint16_t packet_size = (uint16_t)header[0] | ((uint16_t)header[1] << 8);
-        packet_size &= ~0x8000; // Mask out SHTP continuation bit
-
-        DEBUG_LOG("BNO08x - SPI Packet size: " << packet_size);
-        DEBUG_LOG_BUFFER(header, 4);
-
-        if (packet_size > len || packet_size == 0) {
-            return 0; // Buffer overflow safety check
-        }
-
-        // 3. Copy already-received header into caller's buffer
-        memcpy(pBuffer, header, 4);
-
-        // 4. Read remaining cargo in a single SPI transfer
-        if (packet_size > 4) {
-            if (!spi_transfer(nullptr, pBuffer + 4, packet_size - 4)) {
-                return 0;
-            }
         }
 
         if (t_us) *t_us = getTimeUs();
-        return packet_size;
+        return len; // Return full length; the SH-2 library parses the header itself
     }
 
     int write(uint8_t *pBuffer, unsigned len) override {
@@ -187,6 +165,7 @@ private:
 
         char c;
         ::pread(int_fd_, &c, 1, 0); // Read to clear any stale interrupt flag
+        if (c == '0') return true;
 
         if (::poll(&pfd, 1, timeout_ms) > 0) {
             if (pfd.revents & POLLPRI) {
@@ -199,9 +178,12 @@ private:
 
     // Core spidev full-duplex driver wrapper
     bool spi_transfer(const uint8_t* tx, uint8_t* rx, size_t len) {
+        std::vector<uint8_t> dummy_tx(len, 0x00);
+        std::vector<uint8_t> dummy_rx(len, 0x00);
+
         struct spi_ioc_transfer tr = {0};
-        tr.tx_buf = (uintptr_t)tx;
-        tr.rx_buf = (uintptr_t)rx;
+        tr.tx_buf = tx ? (uintptr_t)tx : (uintptr_t)dummy_tx.data();
+        tr.rx_buf = rx ? (uintptr_t)rx : (uintptr_t)dummy_rx.data();
         tr.len = len;
         tr.speed_hz = 3000000;
         tr.bits_per_word = 8;
