@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
+#include <bno08x_driver/gpio-sysfs.h>
 
 /**
  * @brief SPI communication interface (not implemented)
@@ -169,28 +170,51 @@ private:
 
     // Configures sysfs GPIO directions and interrupt edges
     bool setup_gpio(int pin, const std::string& dir, const std::string& edge) {
-        int fd = ::open("/sys/class/gpio/export", O_WRONLY);
-        if (fd >= 0) {
-            std::string p = std::to_string(pin);
-            ::write(fd, p.c_str(), p.length());
-            ::close(fd);
+        // int fd = ::open("/sys/class/gpio/export", O_WRONLY);
+        // if (fd >= 0) {
+        //     std::string p = std::to_string(pin);
+        //     ::write(fd, p.c_str(), p.length());
+        //     ::close(fd);
+        // }
+        // usleep(10000); // Short pause for sysfs node creation
+        //
+        // std::string dir_path = "/sys/class/gpio/gpio" + std::to_string(pin) + "/direction";
+        // fd = ::open(dir_path.c_str(), O_WRONLY);
+        // if (fd < 0) return false;
+        // ::write(fd, dir.c_str(), dir.length());
+        // ::close(fd);
+        //
+        // if (!edge.empty()) {
+        //     std::string edge_path = "/sys/class/gpio/gpio" + std::to_string(pin) + "/edge";
+        //     fd = ::open(edge_path.c_str(), O_WRONLY);
+        //     if (fd >= 0) {
+        //         ::write(fd, edge.c_str(), edge.length());
+        //         ::close(fd);
+        //     }
+        // }
+        // return true;
+        SysGPIO gpio(pin);
+
+        // 1. Export the GPIO
+        if (gpio.gpio_export() < 0) {
+            return false;
         }
+
         usleep(10000); // Short pause for sysfs node creation
 
-        std::string dir_path = "/sys/class/gpio/gpio" + std::to_string(pin) + "/direction";
-        fd = ::open(dir_path.c_str(), O_WRONLY);
-        if (fd < 0) return false;
-        ::write(fd, dir.c_str(), dir.length());
-        ::close(fd);
+        // 2. Set direction
+        bool is_out = (dir == "out");
+        if (gpio.gpio_set_dir(is_out) < 0) {
+            return false;
+        }
 
+        // 3. Set edge if provided
         if (!edge.empty()) {
-            std::string edge_path = "/sys/class/gpio/gpio" + std::to_string(pin) + "/edge";
-            fd = ::open(edge_path.c_str(), O_WRONLY);
-            if (fd >= 0) {
-                ::write(fd, edge.c_str(), edge.length());
-                ::close(fd);
+            if (gpio.gpio_set_edge(edge.c_str()) < 0) {
+                return false;
             }
         }
+
         return true;
     }
 

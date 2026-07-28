@@ -33,6 +33,7 @@ set(SOURCES
   src/bno08x.cpp
   src/bno08x_ros.cpp
   src/ros_node.cpp
+  src/gpio-sysfs.cpp
 )
 
 # Create executable for the driver
