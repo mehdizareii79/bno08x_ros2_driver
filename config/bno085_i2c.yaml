@@ -9,7 +9,7 @@ bno08x_driver:
     # This requires a hardware change to the board
     # (see documentation for more information)
     i2c:
-      enabled: true
+      enabled: false
       bus: "/dev/i2c-5"
       address: "0x4B"
 
@@ -24,7 +24,7 @@ bno08x_driver:
 
 
     spi:
-      enabled: false
+      enabled: true
       device: "/dev/spidev4.1" # name of device which spiinterface gets in
       INT: 35 # int number of INT GPIO
       WAK: 59 # int number of WAK GPIO
