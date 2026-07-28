@@ -9,13 +9,13 @@ bno08x_driver:
     # This requires a hardware change to the board
     # (see documentation for more information)
     i2c:
-      enabled: false
-      bus: "/dev/i2c-7"
-      address: "0x4A"
+      enabled: true
+      bus: "/dev/i2c-5"
+      address: "0x4B"
 
     publish:
       magnetic_field: 
-        enabled: true
+        enabled: false
         rate: 100   # max 100 Hz
       imu:
         enabled: true
@@ -24,9 +24,9 @@ bno08x_driver:
 
 
     spi:
-      enabled: true
+      enabled: false
       device: "/dev/spidev4.1" # name of device which spiinterface gets in
-      INT: 1 # int number of INT GPIO
-      WAK: 2 # int number of WAK GPIO
-      RST: 3 # int number of RST GPIO
+      INT: 35 # int number of INT GPIO
+      WAK: 59 # int number of WAK GPIO
+      RST: 58 # int number of RST GPIO
 
